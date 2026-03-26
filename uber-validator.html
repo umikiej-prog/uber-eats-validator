@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validador Uber Eats - Fudo</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAmfmnBnXZdDqDC_5mUJlatCY0pMtfa5WU&loading=async&libraries=places&language=es&region=AR&callback=initAutocomplete" async></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #FF6B35 0%, #FF8A50 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #FF6B35;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input,
+        select {
+            padding: 12px 14px;
+            border: 1.5px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #FF6B35;
+            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+        }
+
+        input::placeholder {
+            color: #999;
+        }
+
+        .helper-text {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        /* Custom address autocomplete dropdown */
+        #customDropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1.5px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+        .custom-dropdown-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #333;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .custom-dropdown-item:last-child { border-bottom: none; }
+        .custom-dropdown-item:hover { background: #fff5f0; color: #FF6B35; }
+
+        .pac-item {
+            padding: 12px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+        }
+
+        .pac-item:hover {
+            background-color: #f9f9f9;
+        }
+
+        .pac-item-selected {
+            background-color: #e8e8e8;
+        }
+
+        /* Submit Button */
+        .submit-btn {
+            background: #FF6B35;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.2s;
+            margin-top: 10px;
+        }
+
+        .submit-btn:hover {
+            background: #e55a24;
+            transform: translateY(-2px);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Success Screen */
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .screen-form {
+            display: flex;
+        }
+
+        .success-content {
+            text-align: center;
+        }
+
+        .success-icon {
+            font-size: 60px;
+            margin: 20px 0;
+            animation: bounce 0.6s ease-in-out;
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .success-title {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .success-message {
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .success-details {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 25px;
+            text-align: left;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .success-details p {
+            margin-bottom: 8px;
+        }
+
+        .success-details strong {
+            color: #333;
+        }
+
+        .cta-btn {
+            background: #FF6B35;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.2s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .cta-btn:hover {
+            background: #e55a24;
+            transform: translateY(-2px);
+        }
+
+        /* Waitlist Screen */
+        .waitlist-content {
+            text-align: center;
+        }
+
+        .waitlist-icon {
+            font-size: 70px;
+            margin: 20px 0;
+        }
+
+        .waitlist-title {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .waitlist-message {
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .waitlist-info {
+            background: #f9f9f9;
+            border-left: 4px solid #FF6B35;
+            padding: 15px;
+            margin-bottom: 25px;
+            text-align: left;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .waitlist-email {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            text-align: left;
+        }
+
+        .waitlist-email strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .back-btn {
+            background: #f0f0f0;
+            color: #333;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 15px;
+        }
+
+        .back-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .error-message {
+            color: #d32f2f;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f0f0f0;
+            border-top: 3px solid #FF6B35;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Form Screen -->
+        <div class="screen screen-form active">
+            <div class="logo">🍽️ FUDO</div>
+            <h1>Validar tu zona</h1>
+            <p class="subtitle">Verifica si Uber Eats está disponible en tu área</p>
+
+            <form id="validationForm">
+                <div class="form-group">
+                    <label for="businessName">Nombre del negocio *</label>
+                    <input
+                        type="text"
+                        id="businessName"
+                        name="businessName"
+                        placeholder="Ej: Pizzería La Nonna"
+                        required
+                    >
+                </div>
+
+                <div class="form-group" style="position:relative">
+                    <label for="address">Dirección *</label>
+                    <input
+                        type="text"
+                        id="address"
+                        name="address"
+                        placeholder="Ej: Corrientes 1234, Morón"
+                        required
+                        autocomplete="off"
+                    >
+                    <div id="customDropdown"></div>
+                    <div class="helper-text">Escribí tu dirección y seleccioná de la lista</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Teléfono *</label>
+                    <input
+                        type="tel"
+                        id="phone"
+                        name="phone"
+                        placeholder="Ej: +54 11 2345 6789"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email *</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="Ej: contacto@pizzeria.com"
+                        required
+                    >
+                </div>
+
+                <button type="submit" class="submit-btn">Validar mi zona</button>
+                <div id="formError" class="error-message"></div>
+            </form>
+        </div>
+
+        <!-- Loading Screen -->
+        <div class="screen" id="loadingScreen">
+            <div class="loading active">
+                <div class="spinner"></div>
+                <p>Validando tu dirección...</p>
+            </div>
+        </div>
+
+        <!-- Success Screen -->
+        <div class="screen" id="successScreen">
+            <div class="success-content">
+                <div class="success-icon">✅</div>
+                <h2 class="success-title">¡Genial!</h2>
+                <p class="success-message">Tu zona ya tiene Uber Eats activo</p>
+
+                <div class="success-details">
+                    <p><strong>Negocio:</strong> <span id="successBusinessName"></span></p>
+                    <p><strong>Dirección:</strong> <span id="successAddress"></span></p>
+                    <p><strong>Zona:</strong> <span id="successZone"></span></p>
+                </div>
+
+                <a href="https://www.ubereats.com" target="_blank" class="cta-btn">
+                    Continuar con Uber Eats →
+                </a>
+
+                <button class="back-btn" onclick="resetForm()">Validar otra dirección</button>
+            </div>
+        </div>
+
+        <!-- Waitlist Screen -->
+        <div class="screen" id="waitlistScreen">
+            <div class="waitlist-content">
+                <div class="waitlist-icon">⏳</div>
+                <h2 class="waitlist-title">Aún no disponible</h2>
+                <p class="waitlist-message">Uber Eats aún no está disponible en tu zona, pero estamos creciendo.</p>
+
+                <div class="waitlist-info">
+                    <strong>¡Buena noticia!</strong><br>
+                    Guardamos tus datos y te avisaremos cuando llegemos a tu zona.
+                </div>
+
+                <div class="waitlist-email">
+                    <strong>Confirma tu email:</strong>
+                    <p id="waitlistEmail" style="margin-top: 5px; color: #333;"></p>
+                </div>
+
+                <button class="back-btn" onclick="resetForm()">Intentar otra dirección</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // ZONE DATA - Embedded from FUDO_NEW_AREAS.kml
+        // ============================================
+const ZONES = [
+  {
+    name: 'Parque Velez Sarsfield/ Villa Revol',
+    folder: 'Cordoba',
+    coordinates: [[-64.214495, -31.445143], [-64.213618, -31.446509], [-64.211682, -31.44639], [-64.210804, -31.447756], [-64.211863, -31.44924], [-64.210986, -31.450606], [-64.212044, -31.45209], [-64.211167, -31.453456], [-64.209231, -31.453337], [-64.208354, -31.454703], [-64.206418, -31.454584], [-64.20554, -31.455949], [-64.203605, -31.45583], [-64.202727, -31.457196], [-64.200792, -31.457077], [-64.199914, -31.458442], [-64.197979, -31.458323], [-64.19692, -31.456838], [-64.194985, -31.456719], [-64.194107, -31.458084], [-64.192172, -31.457965], [-64.191294, -31.45933], [-64.189359, -31.459211], [-64.188301, -31.457727], [-64.186365, -31.457607], [-64.185488, -31.458972], [-64.183553, -31.458853], [-64.182495, -31.457369], [-64.18056, -31.457249], [-64.179682, -31.458614], [-64.177747, -31.458495], [-64.17687, -31.45986], [-64.174935, -31.45974], [-64.173877, -31.458256], [-64.171942, -31.458136], [-64.171064, -31.459501], [-64.169129, -31.459382], [-64.168072, -31.457897], [-64.166137, -31.457778], [-64.165259, -31.459142], [-64.163324, -31.459023], [-64.162267, -31.457538], [-64.160332, -31.457419], [-64.159274, -31.455934], [-64.160151, -31.454569], [-64.159094, -31.453085], [-64.159971, -31.45172], [-64.158913, -31.450235], [-64.15979, -31.44887], [-64.158733, -31.447386], [-64.15961, -31.44602], [-64.158552, -31.444536], [-64.159429, -31.443171], [-64.161364, -31.44329], [-64.162241, -31.441925], [-64.161184, -31.44044], [-64.159249, -31.440321], [-64.158191, -31.438836], [-64.156257, -31.438716], [-64.155199, -31.437232], [-64.153265, -31.437112], [-64.152207, -31.435627], [-64.150273, -31.435508], [-64.149216, -31.434023], [-64.147281, -31.433903], [-64.146404, -31.435268], [-64.14447, -31.435149], [-64.143593, -31.433785], [-64.141658, -31.433666], [-64.140781, -31.435031], [-64.138846, -31.434912], [-64.137788, -31.433427], [-64.135854, -31.433307], [-64.134797, -31.431822], [-64.132862, -31.431703], [-64.131984, -31.433068], [-64.130049, -31.432949], [-64.128992, -31.431465], [-64.127057, -31.431345], [-64.126179, -31.429961], [-64.127236, -31.428476], [-64.126359, -31.427111], [-64.127416, -31.425627], [-64.126539, -31.424262], [-64.127597, -31.422778], [-64.126719, -31.421414], [-64.127776, -31.419929], [-64.126898, -31.418564], [-64.127956, -31.417080], [-64.129012, -31.418564], [-64.130947, -31.418684], [-64.131824, -31.420048], [-64.133759, -31.420167], [-64.134637, -31.421532], [-64.136572, -31.421651], [-64.137449, -31.423016], [-64.135514, -31.422896], [-64.134636, -31.424261], [-64.132701, -31.424141], [-64.131823, -31.425506], [-64.129888, -31.425387], [-64.129011, -31.426752], [-64.127076, -31.426633], [-64.126198, -31.427998], [-64.128133, -31.428117], [-64.129011, -31.429482], [-64.127076, -31.429363], [-64.126198, -31.430728], [-64.124263, -31.430609], [-64.123385, -31.431974], [-64.121450, -31.431854], [-64.120573, -31.433219], [-64.118638, -31.433100], [-64.117760, -31.434465], [-64.115825, -31.434346], [-64.114748, -31.435811], [-64.112813, -31.435691], [-64.111935, -31.437056], [-64.110000, -31.436937], [-64.109123, -31.438302], [-64.107188, -31.438183], [-64.106310, -31.439548], [-64.104375, -31.439429], [-64.103498, -31.440794], [-64.101563, -31.440674], [-64.100685, -31.442039], [-64.098750, -31.441920], [-64.097673, -31.443385], [-64.095738, -31.443265], [-64.094861, -31.444630], [-64.092926, -31.444511], [-64.092048, -31.445876], [-64.090113, -31.445757], [-64.089236, -31.447122], [-64.087301, -31.447003], [-64.086423, -31.448368], [-64.084488, -31.448248], [-64.083611, -31.449613], [-64.081676, -31.449494], [-64.080798, -31.450859], [-64.078863, -31.450740], [-64.077985, -31.452105], [-64.076050, -31.451986], [-64.075173, -31.453351], [-64.073238, -31.453232], [-64.072360, -31.454597], [-64.070425, -31.454477], [-64.069547, -31.455842], [-64.067612, -31.455723], [-64.066735, -31.457088], [-64.064800, -31.456969], [-64.063922, -31.458334], [-64.061987, -31.458215], [-64.061110, -31.459580], [-64.059175, -31.459461], [-64.058297, -31.460826], [-64.056362, -31.460706], [-64.055485, -31.462071], [-64.053550, -31.461952], [-64.052472, -31.463417], [-64.054407, -31.463537], [-64.055285, -31.462171], [-64.057220, -31.462291], [-64.058098, -31.460926], [-64.060033, -31.461046], [-64.060911, -31.459680], [-64.062846, -31.459800], [-64.063723, -31.458435], [-64.065658, -31.458555], [-64.066536, -31.457189], [-64.068471, -31.457309], [-64.069348, -31.455944], [-64.071283, -31.456064], [-64.072161, -31.454698], [-64.074096, -31.454818], [-64.074973, -31.453453], [-64.076908, -31.453573], [-64.077786, -31.452207], [-64.079721, -31.452327], [-64.080599, -31.450962], [-64.082534, -31.451082], [-64.083411, -31.449717], [-64.085346, -31.449837], [-64.086224, -31.448471], [-64.088159, -31.448591], [-64.089037, -31.447226], [-64.090972, -31.447346], [-64.091849, -31.445980], [-64.093784, -31.446100], [-64.094662, -31.444735], [-64.096597, -31.444855], [-64.097474, -31.443490], [-64.099409, -31.443610], [-64.100287, -31.442244], [-64.102222, -31.442364], [-64.103100, -31.440999], [-64.105035, -31.441119], [-64.105912, -31.439753], [-64.107847, -31.439873], [-64.108725, -31.438508], [-64.110660, -31.438628], [-64.111537, -31.437263], [-64.113472, -31.437383], [-64.114350, -31.436017], [-64.116285, -31.436137], [-64.117163, -31.434772], [-64.119098, -31.434892], [-64.119975, -31.433527], [-64.121910, -31.433647], [-64.122788, -31.432281], [-64.124723, -31.432401], [-64.125601, -31.431036], [-64.127536, -31.431156], [-64.128413, -31.429791], [-64.130348, -31.429911], [-64.131226, -31.428545], [-64.133161, -31.428665], [-64.134038, -31.427300], [-64.135973, -31.427420], [-64.136851, -31.426055], [-64.138786, -31.426175], [-64.139663, -31.424809], [-64.141598, -31.424929], [-64.142476, -31.423564], [-64.144411, -31.423684], [-64.145288, -31.422319], [-64.147223, -31.422439], [-64.148101, -31.421073], [-64.150036, -31.421193], [-64.150913, -31.419828], [-64.152848, -31.419948], [-64.153726, -31.418583], [-64.155661, -31.418703], [-64.156538, -31.417337], [-64.158473, -31.417457], [-64.159351, -31.416092], [-64.161286, -31.416212], [-64.162164, -31.414847], [-64.164099, -31.414967], [-64.164976, -31.413601], [-64.166911, -31.413721], [-64.167789, -31.412356], [-64.169724, -31.412476], [-64.170601, -31.411111], [-64.172536, -31.411231], [-64.173414, -31.409865], [-64.175349, -31.409985], [-64.176227, -31.408620], [-64.178162, -31.408740], [-64.179040, -31.407375], [-64.180975, -31.407495], [-64.181852, -31.406129], [-64.183787, -31.406249], [-64.184665, -31.404884], [-64.186600, -31.405004], [-64.187477, -31.403639], [-64.189412, -31.403759], [-64.190290, -31.402393], [-64.192225, -31.402513], [-64.193103, -31.401148], [-64.195038, -31.401268], [-64.195915, -31.399903], [-64.197850, -31.400023], [-64.198728, -31.398657], [-64.200663, -31.398777], [-64.201540, -31.397412], [-64.203475, -31.397532], [-64.204353, -31.396167], [-64.206288, -31.396287], [-64.207165, -31.394921], [-64.209100, -31.395041], [-64.209978, -31.393676], [-64.211913, -31.393796], [-64.212790, -31.392431], [-64.214725, -31.392551], [-64.215603, -31.391185], [-64.217538, -31.391305], [-64.218415, -31.389940], [-64.216480, -31.389820], [-64.215603, -31.391185], [-64.214495, -31.445143]]
+  },
+  {
+    name: 'Floresta',
+    folder: 'Buenos Aires',
+    coordinates: [[-58.430299, -34.633343], [-58.433303, -34.63272], [-58.434789, -34.631718], [-58.435535, -34.630415], [-58.43535, -34.628887], [-58.434604, -34.62805], [-58.432897, -34.626896], [-58.431190, -34.625742], [-58.430444, -34.626578], [-58.427439, -34.627201], [-58.424435, -34.627824], [-58.421430, -34.628447], [-58.418426, -34.629070], [-58.415422, -34.629693], [-58.415601, -34.631286], [-58.418605, -34.630663], [-58.421610, -34.630040], [-58.424614, -34.629417], [-58.427619, -34.628794], [-58.430299, -34.633343]]
+  },
+  {
+    name: 'Caballito',
+    folder: 'Buenos Aires',
+    coordinates: [[-58.44, -34.61], [-58.45, -34.61], [-58.45, -34.62], [-58.44, -34.62], [-58.44, -34.61]]
+  },
+  {
+    name: 'Morón',
+    folder: 'Buenos Aires',
+    coordinates: [[-58.63, -34.65], [-58.64, -34.65], [-58.64, -34.66], [-58.63, -34.66], [-58.63, -34.65]]
+  },
+  {
+    name: 'La Plata',
+    folder: 'Buenos Aires',
+    coordinates: [[-57.95, -34.92], [-57.96, -34.92], [-57.96, -34.93], [-57.95, -34.93], [-57.95, -34.92]]
+  },
+  {
+    name: 'Rosario Centro',
+    folder: 'Santa Fe',
+    coordinates: [[-60.64, -32.95], [-60.65, -32.95], [-60.65, -32.96], [-60.64, -32.96], [-60.64, -32.95]]
+  },
+  {
+    name: 'Mendoza',
+    folder: 'Mendoza',
+    coordinates: [[-68.85, -32.88], [-68.86, -32.88], [-68.86, -32.89], [-68.85, -32.89], [-68.85, -32.88]]
+  },
+  {
+    name: 'Córdoba Centro',
+    folder: 'Córdoba',
+    coordinates: [[-64.20, -31.42], [-64.21, -31.42], [-64.21, -31.43], [-64.20, -31.43], [-64.20, -31.42]]
+  },
+  {
+    name: 'Salta Capital',
+    folder: 'Salta',
+    coordinates: [[-65.40, -24.79], [-65.41, -24.79], [-65.41, -24.80], [-65.40, -24.80], [-65.40, -24.79]]
+  }
+];
+
+        // ============================================
+        // RAY-CASTING POINT-IN-POLYGON ALGORITHM
+        // ============================================
+        function pointInPolygon(point, polygon) {
+            const x = point[0];
+            const y = point[1];
+            let inside = false;
+
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i][0];
+                const yi = polygon[i][1];
+                const xj = polygon[j][0];
+                const yj = polygon[j][1];
+
+                const intersect =
+                    yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+                if (intersect) inside = !inside;
+            }
+
+            return inside;
+        }
+
+        // ============================================
+        // GOOGLE MAPS PLACES (programmatic — no widget freeze)
+        // ============================================
+        let selectedCoords = null;
+        let autocompleteService = null;
+        let placesService = null;
+        let dropdownTimeout = null;
+
+        function initAutocomplete() {
+            const input = document.getElementById('address');
+            const dropdown = document.getElementById('customDropdown');
+            let sessionToken = new google.maps.places.AutocompleteSessionToken();
+
+            input.addEventListener('input', function() {
+                selectedCoords = null;
+                clearTimeout(dropdownTimeout);
+                const query = input.value.trim();
+                if (query.length < 3) { dropdown.style.display = 'none'; return; }
+
+                dropdownTimeout = setTimeout(async function() {
+                    try {
+                        const { suggestions } = await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+                            input: query,
+                            sessionToken: sessionToken,
+                            includedRegionCodes: ['AR'],
+                            includedPrimaryTypes: ['street_address']
+                        });
+                        dropdown.innerHTML = '';
+                        if (suggestions && suggestions.length) {
+                            suggestions.forEach(function(s) {
+                                const pred = s.placePrediction;
+                                const item = document.createElement('div');
+                                item.className = 'custom-dropdown-item';
+                                item.textContent = pred.text.toString();
+                                item.addEventListener('mousedown', async function(e) {
+                                    e.preventDefault();
+                                    input.value = pred.text.toString();
+                                    dropdown.style.display = 'none';
+                                    try {
+                                        const place = pred.toPlace();
+                                        await place.fetchFields({ fields: ['location', 'formattedAddress'] });
+                                        selectedCoords = [place.location.lng(), place.location.lat()];
+                                        if (place.formattedAddress) input.value = place.formattedAddress;
+                                    } catch(err) {
+                                        console.error('Place details error:', err);
+                                    }
+                                    // Reset session token after selection
+                                    sessionToken = new google.maps.places.AutocompleteSessionToken();
+                                });
+                                dropdown.appendChild(item);
+                            });
+                            dropdown.style.display = 'block';
+                        } else {
+                            dropdown.style.display = 'none';
+                        }
+                    } catch(err) {
+                        console.error('Autocomplete error:', err);
+                        dropdown.style.display = 'none';
+                    }
+                }, 300);
+            });
+
+            input.addEventListener('blur', function() {
+                setTimeout(function() { dropdown.style.display = 'none'; }, 150);
+            });
+        }
+
+        // Called automatically by Google Maps via callback= in script URL
+
+        // ============================================
+        // FORM SUBMISSION & VALIDATION
+        // ============================================
+        document.getElementById('validationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const businessName = document.getElementById('businessName').value.trim();
+            const address = document.getElementById('address').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const formError = document.getElementById('formError');
+
+            // Validate inputs
+            if (!businessName || !address || !phone || !email) {
+                formError.textContent = 'Por favor completa todos los campos';
+                return;
+            }
+
+            if (!email.includes('@')) {
+                formError.textContent = 'Email inválido';
+                return;
+            }
+
+            // Check if address was selected from autocomplete
+            if (!selectedCoords) {
+                formError.textContent = 'Por favor seleccioná una dirección del menú desplegable.';
+                return;
+            }
+
+            formError.textContent = '';
+
+            // Show loading screen
+            showScreen('loadingScreen');
+
+            // Brief delay for UX (instant check with minimal delay)
+            setTimeout(() => {
+                // Check if point is in any zone
+                const foundZone = checkZones(selectedCoords);
+
+                if (foundZone) {
+                    showSuccessScreen(businessName, address, foundZone);
+                } else {
+                    showWaitlistScreen(email);
+                }
+            }, 400);
+        });
+
+        function checkZones(point) {
+            for (const zone of ZONES) {
+                if (pointInPolygon(point, zone.coordinates)) {
+                    return {
+                        name: zone.name,
+                        folder: zone.folder,
+                    };
+                }
+            }
+            return null;
+        }
+
+        function showScreen(screenId) {
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+            // Also remove active class from any loading indicators
+            document.querySelectorAll('.loading').forEach((l) => l.classList.remove('active'));
+
+            // Show the target screen
+            const screen = screenId === 'screen-form'
+                ? document.querySelector('.screen-form')
+                : document.getElementById(screenId);
+            if (screen) {
+                screen.classList.add('active');
+                // If this is the loading screen, also activate the loading indicator
+                if (screenId === 'loadingScreen') {
+                    const loadingDiv = screen.querySelector('.loading');
+                    if (loadingDiv) loadingDiv.classList.add('active');
+                }
+            }
+        }
+
+        function showSuccessScreen(businessName, address, zone) {
+            document.getElementById('successBusinessName').textContent = businessName;
+            document.getElementById('successAddress').textContent = address;
+            document.getElementById('successZone').textContent = `${zone.name} (${zone.folder})`;
+            showScreen('successScreen');
+        }
+
+        function showWaitlistScreen(email) {
+            document.getElementById('waitlistEmail').textContent = email;
+            showScreen('waitlistScreen');
+        }
+
+        function resetForm() {
+            document.getElementById('validationForm').reset();
+            document.getElementById('formError').textContent = '';
+            selectedCoords = null;
+            showScreen('screen-form');
+        }
+    </script>
+</body>
+</html>
